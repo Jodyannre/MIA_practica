@@ -1,11 +1,5 @@
 
-
---importar a postgresql desde psql
---\i '/home/joddie/Desktop/practica/Practica/ddl.sql'
---Direccion del csv
--- 'C:\\Users\\Jers_\\OneDrive\\Desktop\\Practica\\BlockbusterData.csv'
-
---Crear base de datos
+--------------------------------------------------------Crear base de datos
 CREATE DATABASE practica;
 
 --Conectar a BD
@@ -171,5 +165,21 @@ CREATE TABLE RENTA(
 );
 
 
---Eliminar BD
---DROP DATABASE practica;
+--------------------------------------------------------Borrando base de datos
+
+DROP TABLE RENTA;
+DROP TABLE CLIENTE;
+DROP TABLE EMPLEADO;
+DROP TABLE INVENTARIO;
+DROP TABLE TIENDA;
+DROP TABLE DIRECCION;
+DROP TABLE TRADUCCION;
+DROP TABLE DETALLE_CATEGORIA;
+DROP TABLE ELENCO;
+DROP TABLE PELICULA;
+DROP TABLE CIUDAD;
+DROP TABLE ACTOR;
+DROP TABLE CLASIFICACION;
+DROP TABLE IDIOMA;
+DROP TABLE CATEGORIA;
+DROP TABLE PAIS;

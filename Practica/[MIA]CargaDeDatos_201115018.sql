@@ -1,25 +1,4 @@
---Probando con tablas temporales
--- \i '/home/joddie/Desktop/practica/Practica/dml.sql'
-
---Esta forma es para separar, pero no la usare, creo que mejor si
-/*
-INSERT INTO ACTOR (nombre_actor,apellido_actor) 
-		(
-			select  
-			split_part (actor_pelicula, ' ',1) as Nombre, 
-			split_part (actor_pelicula, ' ',2) as Apellido
-			from datos GROUP BY actor_pelicula
-		);
-		
-select * from ACTOR;
---Para concatenar los nombres
-select id_actor, nombre_actor || ' ' || apellido_actor as nombre_actor from actor;
-
-*/
-
-
---////////////////////////////////////////////////////////
-
+--------------------------------------------------------Cargando información a la base de datos
 
 
 --Cargar paises
@@ -492,10 +471,3 @@ INSERT INTO RENTA (cantidad_pagar,fecha_pago,fecha_renta,fecha_devolucion,fk_id_
 		AND a.fecha_retorno != ' '
 	)
 ;
-
-
-
-
-	
-
-

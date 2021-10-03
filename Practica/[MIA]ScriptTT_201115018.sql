@@ -1,9 +1,5 @@
---Direccion del SQL
---\i '/home/joddie/Desktop/practica/Practica/cargaCSV.sql'
 
---Crear la tabla temporal para cargar el csv
-
-
+--------------------------------------------------------Crear y cargar tabla temporal
 
 CREATE TEMPORARY TABLE datos (
 	nombre_cliente VARCHAR (100),
@@ -50,6 +46,8 @@ CREATE TEMPORARY TABLE datos (
 );
 
 
+--------------------------------------------------------Cargar datos
+
 COPY datos(nombre_cliente,correo_cliente,cliente_activo,fecha_creacion,
 tienda_preferida,direccion_cliente,codigo_postal_cliente,ciudad_cliente,
 pais_cliente,fecha_renta,fecha_retorno,monto_a_pagar,fecha_pago,
@@ -64,3 +62,9 @@ FROM '/tmp/BlockbusterData.csv'
 DELIMITER ';'
 CSV HEADER
 encoding 'windows-1251';
+
+
+
+--------------------------------------------------------Eliminar temporal
+
+DROP TABLE datos;

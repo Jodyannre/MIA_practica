@@ -2,7 +2,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import psycopg2
 import os
-
+import json2table
+import json
 
 app = Flask(__name__)
 
@@ -749,38 +750,13 @@ consulta4 = """WITH
 	ORDER BY a.apellido_actor ASC
 ;
 """
-consulta5 = """SELECT a.nombre || ' ' || a.apellido as nombre, CAST(a.conteo AS INTEGER) as no_peliculas,
-	CAST(a.conteo/(select COUNT(id_renta) FROM RENTA)AS FLOAT4) as porcentaje, p.nombre_pais FROM
+consulta5 = """WITH
+consulta5 AS
 	(
-		SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
+		SELECT a.nombre || ' ' || a.apellido as nombre, CAST(a.conteo AS INTEGER) as no_peliculas,
+			p.nombre_pais, p.id_pais FROM
 			(
-				SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
-				c.nombre_cliente,c.apellido_cliente FROM renta as a
-				FULL OUTER JOIN CLIENTE as c
-				ON a.fk_id_cliente = c.id_cliente
-				GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
-				ORDER BY c.nombre_cliente
-			)AS a
-			FULL OUTER JOIN CLIENTE as c
-			ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
-	)AS a
-	INNER JOIN DIRECCION as d
-	ON a.direccion = d.id_direccion
-	INNER JOIN CIUDAD as c
-	ON d.fk_id_ciudad = c.id_ciudad
-	INNER JOIN PAIS as p
-	ON c.fk_id_pais = p.id_pais
-	ORDER BY a.conteo DESC
-	limit 1
-;"""
-
-consulta6 = """WITH
-	paises AS
-	(
-		SELECT a.nombre,a.apellido, a.conteo as no_peliculas,
-			p.nombre_pais,c.nombre_ciudad, p.id_pais,c.id_ciudad FROM
-			(
-				SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,a.conteo , c.fk_id_direccion AS direccion  FROM
+				SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
 					(
 						SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
 						c.nombre_cliente,c.apellido_cliente FROM renta as a
@@ -790,7 +766,7 @@ consulta6 = """WITH
 						ORDER BY c.nombre_cliente
 					)AS a
 					FULL OUTER JOIN CLIENTE as c
-					ON c.id_cliente = a.id_cliente
+					ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
 			)AS a
 			INNER JOIN DIRECCION as d
 			ON a.direccion = d.id_direccion
@@ -798,28 +774,93 @@ consulta6 = """WITH
 			ON d.fk_id_ciudad = c.id_ciudad
 			INNER JOIN PAIS as p
 			ON c.fk_id_pais = p.id_pais
-			ORDER BY p.nombre_pais DESC
+			ORDER BY a.conteo DESC
+			limit 1
 	)
-		--Conteo por ciudad
-		SELECT CAST((a.no_peliculas/totales_pais.no_pais)*100 AS FLOAT4) as porcentaje_ciudad,a.nombre_ciudad,pais.nombre_pais FROM
+	SELECT nombre, no_peliculas, CAST(no_peliculas AS FLOAT4)/
 		(
-			SELECT SUM(no_peliculas) as no_peliculas,nombre_ciudad, id_ciudad FROM paises
-			GROUP BY nombre_ciudad, id_ciudad
-			ORDER BY nombre_ciudad
-		) AS a
-		INNER JOIN ciudad
-		ON ciudad.id_ciudad = a.id_ciudad
-		INNER JOIN pais
-		ON pais.id_pais = ciudad.fk_id_pais
-		INNER JOIN 
-		(
-			--Conteo por pais
-			SELECT SUM(no_peliculas) as no_pais, nombre_pais, id_pais FROM paises
-			GROUP BY nombre_pais, id_pais
-			ORDER BY nombre_pais
-		) as totales_pais
-		ON totales_pais.id_pais = pais.id_pais
-		ORDER BY pais.nombre_pais;"""
+		
+			SELECT SUM(conteo) FROM
+				(
+					SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
+						(
+							SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
+							c.nombre_cliente,c.apellido_cliente FROM renta as a
+							FULL OUTER JOIN CLIENTE as c
+							ON a.fk_id_cliente = c.id_cliente
+							GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
+							ORDER BY c.nombre_cliente
+						)AS a
+						FULL OUTER JOIN CLIENTE as c
+						ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
+				)AS a
+				INNER JOIN DIRECCION as d
+				ON a.direccion = d.id_direccion
+				INNER JOIN CIUDAD as c
+				ON d.fk_id_ciudad = c.id_ciudad
+				INNER JOIN PAIS as p
+				ON c.fk_id_pais = p.id_pais
+				WHERE id_pais = 
+				(
+					--Conseguir el id del pais a donde pertenece la que tiene más rentas para luego conseguir el total de personas de ese país
+					SELECT id_pais FROM
+						(
+							SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
+								(
+									SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
+									c.nombre_cliente,c.apellido_cliente FROM renta as a
+									FULL OUTER JOIN CLIENTE as c
+									ON a.fk_id_cliente = c.id_cliente
+									GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
+									ORDER BY c.nombre_cliente
+								)AS a
+								FULL OUTER JOIN CLIENTE as c
+								ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
+						)AS a
+						INNER JOIN DIRECCION as d
+						ON a.direccion = d.id_direccion
+						INNER JOIN CIUDAD as c
+						ON d.fk_id_ciudad = c.id_ciudad
+						INNER JOIN PAIS as p
+						ON c.fk_id_pais = p.id_pais
+						ORDER BY a.conteo DESC
+						limit 1		
+				
+				)
+			GROUP BY conteo
+			ORDER BY a.conteo DESC		
+	
+		)*100 as porcentaje, nombre_pais FROM consulta5	
+;"""
+
+consulta6 = """	
+	SELECT COUNT(c.id_ciudad) as clientes_por_ciudad, ROUND(CAST(COUNT(c.id_ciudad) AS NUMERIC)/CAST(e.conteo AS NUMERIC),3)*100::FLOAT4 as porcentaje,  
+	c.nombre_ciudad as ciudad,  d.nombre_pais as pais from CLIENTE as a
+	INNER JOIN DIRECCION as b
+	ON a.fk_id_direccion = b.id_direccion
+	INNER JOIN CIUDAD as c
+	ON b.fk_id_ciudad = c.id_ciudad
+	INNER JOIN PAIS as d
+	ON c.fk_id_pais = d.id_pais
+	INNER JOIN 
+	(
+		SELECT d.id_pais, d.nombre_pais, COUNT(d.nombre_pais) as conteo from CLIENTE as a
+		INNER JOIN DIRECCION as b
+		ON a.fk_id_direccion = b.id_direccion
+		INNER JOIN CIUDAD as c
+		ON b.fk_id_ciudad = c.id_ciudad
+		INNER JOIN PAIS as d
+		ON c.fk_id_pais = d.id_pais
+		GROUP BY d.nombre_pais,d.id_pais
+		ORDER BY d.nombre_pais
+	
+	) as e
+	ON d.id_pais = e.id_pais
+	GROUP BY c.id_ciudad, c.nombre_ciudad, d.id_pais, d.nombre_pais, e.conteo
+	ORDER BY d.nombre_pais
+	;
+
+"""
 
 consulta62 = """WITH
 	paises AS
@@ -856,7 +897,8 @@ consulta62 = """WITH
 		) AS a
 		ORDER BY a.no_pais DESC;"""
 
-consulta7 = """WITH
+consulta7 = """
+WITH
 	paises AS
 	(
 		SELECT a.nombre,a.apellido, a.conteo as no_peliculas,
@@ -884,7 +926,7 @@ consulta7 = """WITH
 	)
 		--Conteo por ciudad
 		SELECT a.nombre_ciudad as ciudad,a.nombre_pais as pais, 
-		a.no_peliculas as rentas, CAST((CAST (a.no_peliculas AS FLOAT4)/CAST(b.conteo_ciudad AS FLOAT4)) AS FLOAT4) as promedio
+		a.no_peliculas as rentas, ROUND(CAST((CAST (a.no_peliculas AS NUMERIC(5,2))/CAST(b.conteo_ciudad AS NUMERIC(5,2))) AS NUMERIC(5,2)),2)::FLOAT4 as promedio
 		FROM paises as a
 		INNER JOIN 
 		(
@@ -897,9 +939,12 @@ consulta7 = """WITH
 		) as b
 		ON b.id_pais = a.id_pais
 		GROUP BY a.nombre_ciudad, a.nombre_pais, a.no_peliculas, b.conteo_ciudad
-		ORDER BY a.nombre_pais ASC,a.no_peliculas DESC;"""
+		ORDER BY a.nombre_pais ASC,a.no_peliculas DESC;
 
-consulta8 = """	SELECT COUNT(e.nombre_pais) rentas, CAST(CAST(COUNT(e.nombre_pais) AS FLOAT4)/CAST(i.rentas  AS FLOAT4) AS FLOAT4) as porcentaje,
+"""
+
+consulta8 = """	
+	SELECT COUNT(e.nombre_pais) rentas, ROUND(CAST(CAST(COUNT(e.nombre_pais) AS NUMERIC (6,2))/CAST(i.rentas  AS NUMERIC(6,2)) AS NUMERIC(6,2)),3)*100::FLOAT4 as porcentaje,
 	e.nombre_pais as pais
 	FROM renta as a
 	INNER JOIN cliente as b	
@@ -935,7 +980,8 @@ consulta8 = """	SELECT COUNT(e.nombre_pais) rentas, CAST(CAST(COUNT(e.nombre_pai
 	WHERE h.nombre_categoria = 'Sports'
 	GROUP BY e.nombre_pais,i.nombre_pais,i.rentas
 	ORDER BY e.nombre_pais
-;"""
+;
+"""
 
 consulta9 = """WITH
 	paises AS
@@ -1049,7 +1095,7 @@ try:
 
     @app.route("/")
     def hello():
-      return "<h1 style='color:blue'>ESTAMOS EN EL LABORATORIO DE ARCHIVOS !</h1>"
+      return "<h1 style='color:blue'>Inicio</h1>"
 
 #obtengo todos los registros de mi tabla movies que cree en mi BD
     @app.route('/consulta1', methods=['GET'])
@@ -1236,5 +1282,5 @@ try:
     if __name__ == "__main__":
      app.run(host='0.0.0.0')    
 
-except:
-    print('Error')
+except ValueError as e: 
+    print(e)

@@ -1,9 +1,5 @@
--- Direccion
--- \i '/home/joddie/Desktop/practica/Practica/consultas.sql'
+--------------------------------------------Consultas solicitadas por la empresa
 
-
-
-/*
 --Consulta 1
 
 SELECT COUNT(id_inventario) AS Cantidad_inventario from INVENTARIO WHERE fk_id_pelicula = 
@@ -15,7 +11,6 @@ SELECT COUNT(id_inventario) AS Cantidad_inventario from INVENTARIO WHERE fk_id_p
 	
 	
 --Consulta 2
-
 	
 SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,a.conteo, a.pagado  FROM
 	(
@@ -38,6 +33,8 @@ WHERE apellido_actor LIKE 'Son%'
 OR apellido_actor LIKE '%son%'
 ORDER BY nombre_actor;
 
+
+
 --Consulta 4
 
 WITH
@@ -56,31 +53,90 @@ WITH
 ;
 
 
+
 --Consulta 5
 
-SELECT a.nombre || ' ' || a.apellido as nombre, CAST(a.conteo AS INTEGER) as no_peliculas,
-	CAST(a.conteo/(select COUNT(id_renta) FROM RENTA)AS NUMERIC(5,5)) as porcentaje, p.nombre_pais FROM
+WITH
+consulta5 AS
 	(
-		SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
+		SELECT a.nombre || ' ' || a.apellido as nombre, CAST(a.conteo AS INTEGER) as no_peliculas,
+			p.nombre_pais, p.id_pais FROM
 			(
-				SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
-				c.nombre_cliente,c.apellido_cliente FROM renta as a
-				FULL OUTER JOIN CLIENTE as c
-				ON a.fk_id_cliente = c.id_cliente
-				GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
-				ORDER BY c.nombre_cliente
+				SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
+					(
+						SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
+						c.nombre_cliente,c.apellido_cliente FROM renta as a
+						FULL OUTER JOIN CLIENTE as c
+						ON a.fk_id_cliente = c.id_cliente
+						GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
+						ORDER BY c.nombre_cliente
+					)AS a
+					FULL OUTER JOIN CLIENTE as c
+					ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
 			)AS a
-			FULL OUTER JOIN CLIENTE as c
-			ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
-	)AS a
-	INNER JOIN DIRECCION as d
-	ON a.direccion = d.id_direccion
-	INNER JOIN CIUDAD as c
-	ON d.fk_id_ciudad = c.id_ciudad
-	INNER JOIN PAIS as p
-	ON c.fk_id_pais = p.id_pais
-	ORDER BY a.conteo DESC
-	limit 1
+			INNER JOIN DIRECCION as d
+			ON a.direccion = d.id_direccion
+			INNER JOIN CIUDAD as c
+			ON d.fk_id_ciudad = c.id_ciudad
+			INNER JOIN PAIS as p
+			ON c.fk_id_pais = p.id_pais
+			ORDER BY a.conteo DESC
+			limit 1
+	)
+	SELECT nombre, no_peliculas, CAST(no_peliculas AS FLOAT4)/
+		(
+		
+			SELECT SUM(conteo) FROM
+				(
+					SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
+						(
+							SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
+							c.nombre_cliente,c.apellido_cliente FROM renta as a
+							FULL OUTER JOIN CLIENTE as c
+							ON a.fk_id_cliente = c.id_cliente
+							GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
+							ORDER BY c.nombre_cliente
+						)AS a
+						FULL OUTER JOIN CLIENTE as c
+						ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
+				)AS a
+				INNER JOIN DIRECCION as d
+				ON a.direccion = d.id_direccion
+				INNER JOIN CIUDAD as c
+				ON d.fk_id_ciudad = c.id_ciudad
+				INNER JOIN PAIS as p
+				ON c.fk_id_pais = p.id_pais
+				WHERE id_pais = 
+				(
+					--Conseguir el id del pais a donde pertenece la que tiene más rentas para luego conseguir el total de personas de ese país
+					SELECT id_pais FROM
+						(
+							SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
+								(
+									SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
+									c.nombre_cliente,c.apellido_cliente FROM renta as a
+									FULL OUTER JOIN CLIENTE as c
+									ON a.fk_id_cliente = c.id_cliente
+									GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
+									ORDER BY c.nombre_cliente
+								)AS a
+								FULL OUTER JOIN CLIENTE as c
+								ON c.nombre_cliente || ' ' || c.apellido_cliente = a.nombre_cliente || ' ' || a.apellido_cliente
+						)AS a
+						INNER JOIN DIRECCION as d
+						ON a.direccion = d.id_direccion
+						INNER JOIN CIUDAD as c
+						ON d.fk_id_ciudad = c.id_ciudad
+						INNER JOIN PAIS as p
+						ON c.fk_id_pais = p.id_pais
+						ORDER BY a.conteo DESC
+						limit 1		
+				
+				)
+			GROUP BY conteo
+			ORDER BY a.conteo DESC		
+	
+		)*100 as porcentaje, nombre_pais FROM consulta5	
 ;
 	
 
@@ -88,89 +144,34 @@ SELECT a.nombre || ' ' || a.apellido as nombre, CAST(a.conteo AS INTEGER) as no_
 
 --Consulta 6
 
+	SELECT COUNT(c.id_ciudad) as clientes_por_ciudad, ROUND(CAST(COUNT(c.id_ciudad) AS NUMERIC)/CAST(e.conteo AS NUMERIC),3)*100::FLOAT4 as porcentaje,  
+	c.nombre_ciudad as ciudad,  d.nombre_pais as pais from CLIENTE as a
+	INNER JOIN DIRECCION as b
+	ON a.fk_id_direccion = b.id_direccion
+	INNER JOIN CIUDAD as c
+	ON b.fk_id_ciudad = c.id_ciudad
+	INNER JOIN PAIS as d
+	ON c.fk_id_pais = d.id_pais
+	INNER JOIN 
+	(
+		SELECT d.id_pais, d.nombre_pais, COUNT(d.nombre_pais) as conteo from CLIENTE as a
+		INNER JOIN DIRECCION as b
+		ON a.fk_id_direccion = b.id_direccion
+		INNER JOIN CIUDAD as c
+		ON b.fk_id_ciudad = c.id_ciudad
+		INNER JOIN PAIS as d
+		ON c.fk_id_pais = d.id_pais
+		GROUP BY d.nombre_pais,d.id_pais
+		ORDER BY d.nombre_pais
+	
+	) as e
+	ON d.id_pais = e.id_pais
+	GROUP BY c.id_ciudad, c.nombre_ciudad, d.id_pais, d.nombre_pais, e.conteo
+	ORDER BY d.nombre_pais
+	;
+	
 
-WITH
-	paises AS
-	(
-		SELECT a.nombre,a.apellido, a.conteo as no_peliculas,
-			p.nombre_pais,c.nombre_ciudad, p.id_pais,c.id_ciudad FROM
-			(
-				SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,a.conteo , c.fk_id_direccion AS direccion  FROM
-					(
-						SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
-						c.nombre_cliente,c.apellido_cliente FROM renta as a
-						FULL OUTER JOIN CLIENTE as c
-						ON a.fk_id_cliente = c.id_cliente
-						GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
-						ORDER BY c.nombre_cliente
-					)AS a
-					FULL OUTER JOIN CLIENTE as c
-					ON c.id_cliente = a.id_cliente
-			)AS a
-			INNER JOIN DIRECCION as d
-			ON a.direccion = d.id_direccion
-			INNER JOIN CIUDAD as c
-			ON d.fk_id_ciudad = c.id_ciudad
-			INNER JOIN PAIS as p
-			ON c.fk_id_pais = p.id_pais
-			ORDER BY p.nombre_pais DESC
-	)
-		--Conteo por ciudad
-		SELECT CAST((a.no_peliculas/totales_pais.no_pais)*100 AS NUMERIC(5,2)) as porcentaje_ciudad,a.nombre_ciudad,pais.nombre_pais FROM
-		(
-			SELECT SUM(no_peliculas) as no_peliculas,nombre_ciudad, id_ciudad FROM paises
-			GROUP BY nombre_ciudad, id_ciudad
-			ORDER BY nombre_ciudad
-		) AS a
-		INNER JOIN ciudad
-		ON ciudad.id_ciudad = a.id_ciudad
-		INNER JOIN pais
-		ON pais.id_pais = ciudad.fk_id_pais
-		INNER JOIN 
-		(
-			--Conteo por pais
-			SELECT SUM(no_peliculas) as no_pais, nombre_pais, id_pais FROM paises
-			GROUP BY nombre_pais, id_pais
-			ORDER BY nombre_pais
-		) as totales_pais
-		ON totales_pais.id_pais = pais.id_pais
-		ORDER BY pais.nombre_pais;
-	
-	
-WITH
-	paises AS
-	(
-		SELECT a.nombre,a.apellido, a.conteo as no_peliculas,
-			p.nombre_pais,c.nombre_ciudad, p.id_pais,c.id_ciudad FROM
-			(
-				SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,a.conteo , c.fk_id_direccion AS direccion  FROM
-					(
-						SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
-						c.nombre_cliente,c.apellido_cliente FROM renta as a
-						FULL OUTER JOIN CLIENTE as c
-						ON a.fk_id_cliente = c.id_cliente
-						GROUP BY fk_id_cliente,c.nombre_cliente,c.apellido_cliente
-						ORDER BY c.nombre_cliente
-					)AS a
-					FULL OUTER JOIN CLIENTE as c
-					ON c.id_cliente = a.id_cliente
-			)AS a
-			INNER JOIN DIRECCION as d
-			ON a.direccion = d.id_direccion
-			INNER JOIN CIUDAD as c
-			ON d.fk_id_ciudad = c.id_ciudad
-			INNER JOIN PAIS as p
-			ON c.fk_id_pais = p.id_pais
-			ORDER BY p.nombre_pais DESC
-	)				
-			--Conteo por pais
-		SELECT CAST ((a.no_pais/(SELECT COUNT(id_renta) FROM renta))*100 AS NUMERIC(5,2)) as porcentaje_pais,a.nombre_pais FROM
-		(
-			SELECT SUM(no_peliculas) as no_pais, nombre_pais, id_pais FROM paises
-			GROUP BY nombre_pais, id_pais
-			ORDER BY nombre_pais
-		) AS a
-		ORDER BY a.no_pais DESC;
+
 
 
 --consulta 7
@@ -203,7 +204,7 @@ WITH
 	)
 		--Conteo por ciudad
 		SELECT a.nombre_ciudad as ciudad,a.nombre_pais as pais, 
-		a.no_peliculas as rentas, CAST((CAST (a.no_peliculas AS NUMERIC(5,2))/CAST(b.conteo_ciudad AS NUMERIC(5,2))) AS NUMERIC(5,2)) as promedio
+		a.no_peliculas as rentas, ROUND(CAST((CAST (a.no_peliculas AS NUMERIC(5,2))/CAST(b.conteo_ciudad AS NUMERIC(5,2))) AS NUMERIC(5,2)),2)::FLOAT4 as promedio
 		FROM paises as a
 		INNER JOIN 
 		(
@@ -223,7 +224,7 @@ WITH
 --Consulta 8
 
 	--Filtrado de Sportas
-	SELECT COUNT(e.nombre_pais) rentas, CAST(CAST(COUNT(e.nombre_pais) AS NUMERIC (6,2))/CAST(i.rentas  AS NUMERIC(6,2)) AS NUMERIC(6,2)) as porcentaje,
+	SELECT COUNT(e.nombre_pais) rentas, ROUND(CAST(CAST(COUNT(e.nombre_pais) AS NUMERIC (6,2))/CAST(i.rentas  AS NUMERIC(6,2)) AS NUMERIC(6,2)),3)*100::FLOAT4 as porcentaje,
 	e.nombre_pais as pais
 	FROM renta as a
 	INNER JOIN cliente as b	
@@ -260,7 +261,6 @@ WITH
 	GROUP BY e.nombre_pais,i.nombre_pais,i.rentas
 	ORDER BY e.nombre_pais
 ;
-
 
 
 
@@ -331,6 +331,8 @@ WITH
 		GROUP BY a.nombre_ciudad, a.nombre_pais, a.no_peliculas, b.conteo_ciudad
 		ORDER BY a.nombre_pais ASC,a.no_peliculas DESC;	
 */
+
+
 
 --Consulta 10
 
