@@ -122,7 +122,8 @@ CREATE TABLE TIENDA(
 CREATE TABLE INVENTARIO(
 	id_inventario SERIAL PRIMARY KEY,
 	fk_id_pelicula INT NOT NULL,
-	fk_id_tienda INT NOT NULL
+	fk_id_tienda INT NOT NULL,
+	cantidad INT NOT NULL
 );
 
 CREATE TABLE EMPLEADO(
@@ -561,25 +562,30 @@ INSERT INTO CLIENTE (nombre_cliente,apellido_cliente,correo_cliente,fecha_regist
 
 
 -- Cargar inventario
-INSERT INTO INVENTARIO (fk_id_pelicula,fk_id_tienda)
+INSERT INTO INVENTARIO (fk_id_pelicula,fk_id_tienda, cantidad)
 	(
-		SELECT a.id_pelicula,t.id_tienda FROM
+		SELECT a.id_pelicula, a.id_tienda, COUNT(a.nombre_pelicula) as inventario FROM
 			(
-				SELECT a.nombre_pelicula,a.tienda_pelicula, p.id_pelicula, p.titulo FROM
-					(
-						SELECT a.nombre_pelicula,a.tienda_pelicula,TO_TIMESTAMP(fecha_renta, 'DD/MM/YYYY HH24:MM') as fecha_renta,
-						TO_TIMESTAMP(fecha_retorno, 'DD/MM/YYYY HH24:MM') as fecha_retorno FROM datos as a
-						WHERE tienda_pelicula != '-'
-						AND fecha_retorno != '-'
-						GROUP BY nombre_pelicula,tienda_pelicula,fecha_renta,fecha_retorno
-					) AS a
-				FULL OUTER JOIN PELICULA as p
-				ON a.nombre_pelicula = p.titulo
-				WHERE a.tienda_pelicula IS NOT NULL
+				SELECT a.nombre_pelicula,a.nombre_tienda, a.nombre_cliente,a.ano_lanzamiento, p.id_pelicula, t.id_tienda FROM datos AS a
+				INNER JOIN CLIENTE as c
+				ON a.nombre_cliente = c.nombre_cliente || ' ' || c.apellido_cliente
+				INNER JOIN TIENDA as t
+				ON t.nombre_tienda = a.nombre_tienda
+				INNER JOIN PELICULA as p
+				ON p.titulo = a.nombre_pelicula
+				AND p.ano_lanzamiento = TO_NUMBER(a.ano_lanzamiento,'9999')
+				AND a.nombre_pelicula IS NOT NULL
+				AND a.nombre_pelicula != '-'
+				AND a.nombre_tienda IS NOT NULL
+				AND a.nombre_tienda != '-'
+				AND a.nombre_cliente IS NOT NULL
+				AND a.nombre_cliente != '-'
+				AND a.ano_lanzamiento IS NOT NULL
+				AND a.ano_lanzamiento != '-'
+				GROUP BY a.nombre_pelicula,a.nombre_tienda, a.nombre_cliente,a.ano_lanzamiento, p.id_pelicula, t.id_tienda
 				ORDER BY a.nombre_pelicula
 			) AS a
-		FULL OUTER JOIN TIENDA as t
-		ON t.nombre_tienda = a.tienda_pelicula
+		GROUP BY a.nombre_pelicula, a.nombre_tienda, a.id_pelicula, a.id_tienda
 		ORDER BY a.nombre_pelicula
 	)
 ;
@@ -712,12 +718,17 @@ crearTemporal = """CREATE TEMPORARY TABLE datos (
 	actor_pelicula VARCHAR (100)
 );"""
 
-consulta1 = """SELECT COUNT(id_inventario) AS Cantidad_inventario from INVENTARIO WHERE fk_id_pelicula = 
-	(
-		SELECT id_pelicula FROM PELICULA WHERE LOWER(titulo) = LOWER('Sugar Wonka')
-	);"""
+consulta1 = """
+SELECT p.titulo as pelicula, SUM(i.cantidad)as inventario FROM inventario as i
+INNER JOIN PELICULA as p
+ON i.fk_id_pelicula = p.id_pelicula
+WHERE p.titulo = 'SUGAR WONKA'
+GROUP BY i.fk_id_pelicula, p.titulo
+;
+"""
 
-consulta2 = """SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,a.conteo as rentas, CAST (a.pagado AS FLOAT4)  FROM
+consulta2 = """
+SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,a.conteo as rentas, CAST (a.pagado AS FLOAT4)  FROM
 	(
 		SELECT fk_id_cliente as id_cliente, COUNT(fk_id_cliente) as conteo, 
 		c.nombre_cliente,c.apellido_cliente, SUM(cantidad_pagar) as pagado FROM renta as a
@@ -729,13 +740,15 @@ consulta2 = """SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido
 	WHERE conteo >= 40
 ;"""
 
-consulta3 = """SELECT nombre_actor || ' ' || apellido_actor as nombre_actor from ACTOR 
+consulta3 = """
+SELECT nombre_actor || ' ' || apellido_actor as nombre_actor from ACTOR 
 WHERE apellido_actor LIKE 'Son%'
 OR apellido_actor LIKE '%son%'
 ORDER BY nombre_actor;
 """
 
-consulta4 = """WITH
+consulta4 = """
+WITH
 	peliculas AS
 		(
 			SELECT id_pelicula,titulo,ano_lanzamiento FROM PELICULA
@@ -750,7 +763,8 @@ consulta4 = """WITH
 	ORDER BY a.apellido_actor ASC
 ;
 """
-consulta5 = """WITH
+consulta5 = """
+WITH
 consulta5 AS
 	(
 		SELECT a.nombre || ' ' || a.apellido as nombre, CAST(a.conteo AS INTEGER) as no_peliculas,
@@ -777,9 +791,8 @@ consulta5 AS
 			ORDER BY a.conteo DESC
 			limit 1
 	)
-	SELECT nombre, no_peliculas, CAST(no_peliculas AS FLOAT4)/
+	SELECT nombre, no_peliculas, (no_peliculas::FLOAT4*100) /
 		(
-		
 			SELECT SUM(conteo) FROM
 				(
 					SELECT a.nombre_cliente as nombre, a.apellido_cliente as apellido,CAST(a.conteo AS NUMERIC(5,2)), c.fk_id_direccion AS direccion  FROM
@@ -830,8 +843,10 @@ consulta5 AS
 			GROUP BY conteo
 			ORDER BY a.conteo DESC		
 	
-		)*100 as porcentaje, nombre_pais FROM consulta5	
-;"""
+		)
+	as porcentaje, nombre_pais FROM consulta5	
+;
+"""
 
 consulta6 = """	
 	SELECT COUNT(c.id_ciudad) as clientes_por_ciudad, ROUND(CAST(COUNT(c.id_ciudad) AS NUMERIC)/CAST(e.conteo AS NUMERIC),3)*100::FLOAT4 as porcentaje,  
@@ -859,7 +874,6 @@ consulta6 = """
 	GROUP BY c.id_ciudad, c.nombre_ciudad, d.id_pais, d.nombre_pais, e.conteo
 	ORDER BY d.nombre_pais
 	;
-
 """
 
 consulta62 = """WITH
@@ -895,7 +909,8 @@ consulta62 = """WITH
 			GROUP BY nombre_pais, id_pais
 			ORDER BY nombre_pais
 		) AS a
-		ORDER BY a.no_pais DESC;"""
+		ORDER BY a.no_pais DESC;
+"""
 
 consulta7 = """
 WITH
@@ -1046,10 +1061,12 @@ consulta9 = """WITH
 					) AS a
 			)
 		GROUP BY a.nombre_ciudad, a.nombre_pais, a.no_peliculas, b.conteo_ciudad
-		ORDER BY a.nombre_pais ASC,a.no_peliculas DESC;	"""
+		ORDER BY a.nombre_pais ASC,a.no_peliculas DESC;	
+"""
 
 
-consulta10 = """WITH
+consulta10 = """
+WITH
 	tabla_resultado AS
 	(
 		SELECT *,ROW_NUMBER() OVER (PARTITION BY a.nombre_ciudad order by a.nombre_ciudad, a.contador DESC) AS fila_id FROM
@@ -1079,7 +1096,8 @@ consulta10 = """WITH
 	WHERE fila_id = 1
 	AND nombre_categoria = 'Horror'
 	--WHERE nombre_pais = 'Angola'
-	;"""
+	;
+"""
 
 try:
     con = psycopg2.connect(

@@ -385,25 +385,30 @@ INSERT INTO CLIENTE (nombre_cliente,apellido_cliente,correo_cliente,fecha_regist
 
 
 -- Cargar inventario
-INSERT INTO INVENTARIO (fk_id_pelicula,fk_id_tienda)
+INSERT INTO INVENTARIO (fk_id_pelicula,fk_id_tienda, cantidad)
 	(
-		SELECT a.id_pelicula,t.id_tienda FROM
+		SELECT a.id_pelicula, a.id_tienda, COUNT(a.nombre_pelicula) as inventario FROM
 			(
-				SELECT a.nombre_pelicula,a.tienda_pelicula, p.id_pelicula, p.titulo FROM
-					(
-						SELECT a.nombre_pelicula,a.tienda_pelicula,TO_TIMESTAMP(fecha_renta, 'DD/MM/YYYY HH24:MM') as fecha_renta,
-						TO_TIMESTAMP(fecha_retorno, 'DD/MM/YYYY HH24:MM') as fecha_retorno FROM datos as a
-						WHERE tienda_pelicula != '-'
-						AND fecha_retorno != '-'
-						GROUP BY nombre_pelicula,tienda_pelicula,fecha_renta,fecha_retorno
-					) AS a
-				FULL OUTER JOIN PELICULA as p
-				ON a.nombre_pelicula = p.titulo
-				WHERE a.tienda_pelicula IS NOT NULL
+				SELECT a.nombre_pelicula,a.nombre_tienda, a.nombre_cliente,a.ano_lanzamiento, p.id_pelicula, t.id_tienda FROM datos AS a
+				INNER JOIN CLIENTE as c
+				ON a.nombre_cliente = c.nombre_cliente || ' ' || c.apellido_cliente
+				INNER JOIN TIENDA as t
+				ON t.nombre_tienda = a.nombre_tienda
+				INNER JOIN PELICULA as p
+				ON p.titulo = a.nombre_pelicula
+				AND p.ano_lanzamiento = TO_NUMBER(a.ano_lanzamiento,'9999')
+				AND a.nombre_pelicula IS NOT NULL
+				AND a.nombre_pelicula != '-'
+				AND a.nombre_tienda IS NOT NULL
+				AND a.nombre_tienda != '-'
+				AND a.nombre_cliente IS NOT NULL
+				AND a.nombre_cliente != '-'
+				AND a.ano_lanzamiento IS NOT NULL
+				AND a.ano_lanzamiento != '-'
+				GROUP BY a.nombre_pelicula,a.nombre_tienda, a.nombre_cliente,a.ano_lanzamiento, p.id_pelicula, t.id_tienda
 				ORDER BY a.nombre_pelicula
 			) AS a
-		FULL OUTER JOIN TIENDA as t
-		ON t.nombre_tienda = a.tienda_pelicula
+		GROUP BY a.nombre_pelicula, a.nombre_tienda, a.id_pelicula, a.id_tienda
 		ORDER BY a.nombre_pelicula
 	)
 ;

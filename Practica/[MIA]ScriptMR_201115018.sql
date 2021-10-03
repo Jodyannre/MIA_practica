@@ -109,7 +109,8 @@ CREATE TABLE TIENDA(
 CREATE TABLE INVENTARIO(
 	id_inventario SERIAL PRIMARY KEY,
 	fk_id_pelicula INT NOT NULL,
-	fk_id_tienda INT NOT NULL
+	fk_id_tienda INT NOT NULL,
+	cantidad INT NOT NULL
 );
 
 CREATE TABLE EMPLEADO(

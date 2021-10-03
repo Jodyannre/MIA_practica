@@ -2,10 +2,12 @@
 
 --Consulta 1
 
-SELECT COUNT(id_inventario) AS Cantidad_inventario from INVENTARIO WHERE fk_id_pelicula = 
-	(
-		SELECT id_pelicula FROM PELICULA WHERE LOWER(titulo) = LOWER('Sugar Wonka')
-	);
+SELECT p.titulo as pelicula, SUM(i.cantidad)as inventario FROM inventario as i
+INNER JOIN PELICULA as p
+ON i.fk_id_pelicula = p.id_pelicula
+WHERE p.titulo = 'SUGAR WONKA'
+GROUP BY i.fk_id_pelicula, p.titulo
+;
 
 
 	
@@ -83,7 +85,7 @@ consulta5 AS
 			ORDER BY a.conteo DESC
 			limit 1
 	)
-	SELECT nombre, no_peliculas, CAST(no_peliculas AS FLOAT4)/
+	SELECT nombre, no_peliculas, (no_peliculas::FLOAT4*100) /
 		(
 		
 			SELECT SUM(conteo) FROM
@@ -136,7 +138,7 @@ consulta5 AS
 			GROUP BY conteo
 			ORDER BY a.conteo DESC		
 	
-		)*100 as porcentaje, nombre_pais FROM consulta5	
+		) as porcentaje, nombre_pais FROM consulta5	
 ;
 	
 
