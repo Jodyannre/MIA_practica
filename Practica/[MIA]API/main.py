@@ -1129,6 +1129,7 @@ try:
             
             #row = {"columns":columns, "rows":rows, "result":result}
             #print(rows)
+            con.commit()
             return jsonify(result)
         except:
             return jsonify('Error, los datos no existen.')
@@ -1144,6 +1145,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result)
 
     @app.route('/consulta3', methods=['GET'])
@@ -1158,6 +1160,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result)
 
     @app.route('/consulta4', methods=['GET'])
@@ -1172,6 +1175,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result) 
 
     @app.route('/consulta5', methods=['GET'])
@@ -1186,6 +1190,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result) 
 
     @app.route('/consulta6', methods=['GET'])
@@ -1200,6 +1205,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result) 
 
 
@@ -1215,6 +1221,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result) 
 
 
@@ -1230,6 +1237,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result) 
     
     @app.route('/consulta8', methods=['GET'])
@@ -1244,6 +1252,7 @@ try:
         
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
+        con.commit()
         return jsonify(result)
 
     @app.route('/consulta9', methods=['GET'])
@@ -1255,7 +1264,7 @@ try:
         for row in rows:
             row = dict(zip(columns,row))
             result.append(row)
-        
+        con.commit()
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
         return jsonify(result)
@@ -1269,7 +1278,7 @@ try:
         for row in rows:
             row = dict(zip(columns,row))
             result.append(row)
-        
+        con.commit()
         #row = {"columns":columns, "rows":rows, "result":result}
         #print(rows)
         return jsonify(result)
@@ -1277,25 +1286,30 @@ try:
     @app.route('/cargarTemporal', methods=['GET'])
     def fetch_cargarTemporal():
         cur.execute(crearTemporal)  
+        con.commit()
         with open ('/tmp/convertido.csv','r') as f:
             next(f)
             cur.copy_from(f, 'datos',sep=';')
+        con.commit()
         return jsonify('Temporal cargada.') 
 
     @app.route('/eliminarTemporal', methods=['GET'])
     def fetch_eliminarTemporal():
         cur.execute(eliminarTemporal)
+        con.commit()
         return jsonify('Temporal eliminada.')
 
     @app.route('/cargarModelo', methods=['GET'])
     def fetch_cargarModelo():
         cur.execute(crearModelo)
         cur.execute(cargarModelo)
+        con.commit()
         return jsonify('Modelo cargado.')        
 
     @app.route('/eliminarModelo', methods=['GET'])
     def fetch_eliminarModelo():
         cur.execute(eliminarModelo)
+        con.commit()
         return jsonify('Modelo eliminado.')
     if __name__ == "__main__":
      app.run(host='0.0.0.0')    
