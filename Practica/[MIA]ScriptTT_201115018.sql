@@ -67,4 +67,6 @@ encoding 'windows-1251';
 
 --------------------------------------------------------Eliminar temporal
 
-DROP TABLE datos;
+DELETE FROM datos;
+
+--DROP TABLE datos;

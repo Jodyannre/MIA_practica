@@ -672,7 +672,7 @@ DROP TABLE CATEGORIA;
 DROP TABLE PAIS;"""
 
 
-eliminarTemporal = """DROP TABLE datos;"""
+eliminarTemporal = """DELETE FROM datos;"""
 
 crearTemporal = """CREATE TEMPORARY TABLE datos (
 	nombre_cliente VARCHAR (100),
